@@ -1,5 +1,5 @@
 let enteredPin = "";
-const correctPin = "0910";
+const correctPin = "1610";
 let swipedCards = 0;
 const totalCards = 5;
 
