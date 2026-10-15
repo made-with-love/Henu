@@ -199,4 +199,140 @@ function initPetals() {
     height = canvas.height = window.innerHeight;
   });
 
-  const petals = Array.from({ length: 
+  const petals = Array.from({ length: 25 }, () => ({
+    x: Math.random() * width,
+    y: Math.random() * height,
+    size: Math.random() * 8 + 6,
+    speedY: Math.random() * 1 + 0.5,
+    speedX: Math.random() * 0.5 - 0.25,
+    rotation: Math.random() * 360,
+    rotSpeed: Math.random() * 2 - 1
+  }));
+
+  function animate() {
+    ctx.clearRect(0, 0, width, height);
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.7)';
+
+    petals.forEach(p => {
+      ctx.save();
+      ctx.translate(p.x, p.y);
+      ctx.rotate((p.rotation * Math.PI) / 180);
+      ctx.beginPath();
+      ctx.ellipse(0, 0, p.size, p.size / 2, 0, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.restore();
+
+      p.y += p.speedY;
+      p.x += p.speedX;
+      p.rotation += p.rotSpeed;
+
+      if (p.y > height) {
+        p.y = -10;
+        p.x = Math.random() * width;
+      }
+    });
+
+    requestAnimationFrame(animate);
+  }
+
+  animate();
+}
+
+/* Music Player Controls */
+function toggleAudio() {
+  const music = document.getElementById('bg-music');
+  const btn = document.getElementById('audio-toggle-btn');
+
+  if (music) {
+    if (music.paused) {
+      music.play();
+      if (btn) btn.innerText = "⏸️";
+    } else {
+      music.pause();
+      if (btn) btn.innerText = "▶️";
+    }
+  }
+}
+
+/* Candle Blowout */
+document.addEventListener('DOMContentLoaded', () => {
+  initPetals();
+
+  const micBtn = document.getElementById('mic-btn');
+  const flame = document.getElementById('candle-flame');
+
+  if (micBtn) micBtn.addEventListener('click', enableMic);
+  if (flame) flame.addEventListener('click', triggerBlowout);
+});
+
+async function enableMic() {
+  const status = document.getElementById('mic-status');
+  const btn = document.getElementById('mic-btn');
+
+  try {
+    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    audioContext = new (window.AudioContext || window.webkitAudioContext)();
+    analyser = audioContext.createAnalyser();
+    microphone = audioContext.createMediaStreamSource(stream);
+
+    analyser.fftSize = 256;
+    microphone.connect(analyser);
+
+    if (status) status.innerText = "🎙️ Mic active! BLOW into your mic now!";
+    if (btn) btn.style.display = "none";
+
+    listenForBlow();
+  } catch (err) {
+    if (status) status.innerText = "Mic blocked. Tap the flame directly to blow it out!";
+  }
+}
+
+function listenForBlow() {
+  if (isBlown || !analyser) return;
+
+  const dataArray = new Uint8Array(analyser.frequencyBinCount);
+  analyser.getByteFrequencyData(dataArray);
+
+  let totalVolume = 0;
+  for (let i = 0; i < dataArray.length; i++) {
+    totalVolume += dataArray[i];
+  }
+  let averageVolume = totalVolume / dataArray.length;
+
+  if (averageVolume > 38) {
+    triggerBlowout();
+    return;
+  }
+
+  requestAnimationFrame(listenForBlow);
+}
+
+function triggerBlowout() {
+  if (isBlown) return;
+  isBlown = true;
+
+  const flame = document.getElementById('candle-flame');
+  const status = document.getElementById('mic-status');
+  const modal = document.getElementById('wish-modal');
+
+  if (flame) flame.classList.add('out');
+  if (status) status.innerText = "✨ Wish granted! ✨";
+
+  if (typeof confetti === 'function') {
+    confetti({
+      particleCount: 120,
+      spread: 70,
+      origin: { y: 0.7 },
+      colors: ['#ec407a', '#f8bbd0', '#ffda79', '#ffffff']
+    });
+  }
+
+  setTimeout(() => {
+    if (modal) modal.classList.add('active');
+  }, 700);
+}
+
+function closeWishModal() {
+  const modal = document.getElementById('wish-modal');
+  if (modal) modal.classList.remove('active');
+}
